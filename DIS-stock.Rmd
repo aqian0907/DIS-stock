@@ -1,0 +1,184 @@
+---
+title: "DIS stock price prediction using Monte Carlo Simulation of Random Walk"
+author: "Cheng"
+date: "2020/12/18"
+output:
+  pdf_document: default
+
+---
+#Abstract 
+
+Stock market has always been a popular topic among people’s conversations. The trending of stock market not only shows the developing situations of companies’, but the index like Nasdaq, Dow Jones, and S&P 500 also suggests the well-being of the economy as a whole.(citation) However, this paper will not focus on the broader market since it requires professional knowledges and broader vision of Economics, but on one stock, The Walt Disney Company. The object is to use the historical data including daily price high-low, volumes, and monthly price average of the Disney stock, as well as the knowledge of Statistics to make a prediction for the future market price of Disney Company. 
+
+
+#Keywords 
+Key words: Stock Market, Technical Analysis, Monte Carlo Method, Price Prediction, Random Walk Hypothesis.
+
+#Introduction
+Financial market has been the subject of research from at least a hundred years to now. Price prediction and forecasting were the key to those researches. Over the years, there develops several different methods for stock analysis. fundamental analysis and technical analysis are two major type of stock analysis. Fundamental analysis requires a company’s financial records, asset appraisal, financial statement and so on. While technical analysis is the forecasting of future stock price depends on the past price movement. It assumes the price of a stock is influenced simply by the force of supply and demand.【3】 Thus, to investigate the future price of the DIS stock only based on the historical data of it, technical analysis seems to be a feasible solution.
+
+However, there are few assumptions before applying the technical analysis on a stock: First is the volumes being traded must be large enough so that every trade would not result in dramatically changing of the stock price. Second is the that action like company dividends, splits and distributions can also influence the stock price as outside sources. The last important one is that technical analysis could be unreliable under the influence of extreme new, such as the CEO resigned due to an unexpected event. Under those circumstance, the DIS stock failed to meet part of these assumptions which highlight the opacity of the stock market. Here we can see, even so fundamental analysis and technical analysis were recognized as the most common methods to investigate a stock, the financial market is far more complicated than that.
+
+
+That is how random walk theory and Monte Carlo method would help with the prediction of the stock price by eliminating the randomness to improve the accuracy of the prediction. Random Walk Theory was first mentioned by Burton Malkiel in his book “a Random Walk Down Wall street” [1]. The author believe we can not predict the stock market price without assuming additional risk. With this theory, instead of analyzing the past trend, we see the future trend take a random, unpredictable path. Since the one simulation does not indictes any useful information, we simulate the process multiple time. And this process is called the Monte Carlo method of Simulation. This paper will investigate question of how the DIS stock price would perform in future time using Monte Carlo Simulation of random walk and combing with the help of technical analysis.
+
+```{r setup, include=FALSE}
+library(xts)
+#install.packages("rvest")
+library(rvest)
+
+#install.packages("tidyverse")
+library(tidyverse)
+
+#install.packages("stringr")
+library(stringr)
+#install.packages("forcats")
+library(forcats)
+
+#install.packages("lubridate")
+library(lubridate)
+#install.packages("dplyr")
+library(dplyr)
+
+
+#install.packages("quantmod")
+library("quantmod")
+
+getSymbols("DIS", from='2010-11-01',to='2020-11-01')
+
+WkAvVol<- apply.weekly(Vo(DIS),mean)
+```
+#Methodology
+##Data: 
+The dataset used in this research was obtained from Yahoo Finance. It includes price of daily high and low, daily volumes and open-close price of Disney’ stock for the time range of 2010-11-01 to 2020-11-01. 
+
+Model: 
+To simulate the price, first I need to know the expected return and volatility of the DIS. We estimate the log return by using the following formula. 
+$$ return= log(St)-log(S_t-1)$$
+Then calculate the mean value and standard deviation of log return base on our historical data. Next, with the result of mean value and standard deviation, I generated the price by using the exponential growth rate, creating a one-time prediction of future price. In the next step, 
+
+#Result
+##Technical Analysis 
+This graph shows the trend of DIS stock from 2010-11-01 to 2020-10-30. We identify an overall increase in the past ten years. From the comparison of volume and price change, we observed a big change in volume when there are sudden drop or increase.   
+```{r , echo=FALSE}
+
+chartSeries( DIS,
+            type="line",
+            subset='2010-11-01::2020-11-01',
+            theme=chartTheme('white'))
+```
+##log return
+Next, this is the log return plot in the graph:
+```{r, include=FALSE}
+library(ggplot2)
+log_R <- DIS%>%Ad()%>%dailyReturn(type='log')
+
+par(mfrow=c(1,1))
+plot(log_R, type='l',main='log returns plot')
+
+```
+
+
+As metioned above, I use log return because they simply make the financial data more stable compare to before. By calculation, the mean of historical log return has a value of $0.0005368$ , this indicates the expected rate of return. The standard deviation has a value of $0.01531$, which represent the volatility of the stock market. 
+
+
+
+##Random Walk
+This is the single simulation using random walk theory for the protential  prediction of the DIS price in next five years (254*5 days).  Due to set.seed() function was not implanted, every simulation will be random. 
+
+```{r,include=FALSE}
+mu <- mean(log_R) # mean of log returns
+sig <- sd(log_R) # sd of log returns 
+testsim<-rep(NA,1000)
+price<-rep(NA,252*5)
+price[1]<-as.numeric(DIS$DIS.Adjusted[length(DIS$DIS.Adjusted),])
+#start simulating prices
+
+
+for(i in 2:length(testsim)){
+  price[i]<-price[i-1]*exp(rnorm(1,mu,sig))
+}
+
+random_data<-cbind(price,1:(252*5))
+colnames(random_data)<-c("Price","Day")
+random_data<-as.data.frame(random_data)
+```
+```{r, include=FALSE}
+random_data %>% ggplot(aes(Day,Price))+geom_line()+labs(title="Disneey(DIS) price simulation for 5 years")+theme_bw()
+```
+
+##Monte Carlo Simulation
+The following graph displays 1000 Monte Carlo simulation of DIS price for 5 years. Despite the difference of all curve, the simulatio successfully shows some pattern of the historical data.
+
+```{r , include=F }
+N<-1000
+abc<-matrix(nrow=252*4,ncol=N)
+abc[1,1]<-as.numeric(DIS$DIS.Adjusted[length(DIS$DIS.Adjusted),])
+
+for(j in 1:ncol(abc)){
+  abc[1,j]<- as.numeric(DIS$DIS.Adjusted[length(DIS$DIS.Adjusted),])
+for(i in 2:nrow(abc)){
+  abc[i,j]<- abc[i-1,j]*exp(rnorm(1,mu,sig))
+}
+}
+
+name<-str_c("Sim ",seq(1,1000))
+name<-c("Day",name)
+
+r_m<-cbind(1:(252*5),abc)
+r_m<-as.tibble(r_m)
+colnames(r_m)<-name
+
+dim(r_m) 
+
+r_m%>%gather("Simulation","Price",2:1001)%>%ggplot(aes(x=Day,y=Price,Group=Simulation))+geom_line(alpha=0.2)+labs(title="DIS: 1000 Monte Carlo Simulations for 5 Years")+theme_bw()
+
+```
+
+```{r, echo=F }
+probs<-c(0.005,0.025,0.25,0.5,0.75,0.975,0.995)
+r_m[1000,-1]%>%as.numeric()%>%quantile(probs=probs)
+```
+Here is the percentile , it tells us the result more clearly. We can see for the next 5 year, our simulation indicated a low of $55.307$ with a high of $660.701$. Howeveer, the 50th percentile(median) indicate a value of $207.357$, which has a 18.7 percent of increase in average for next five years.It indicate that over 50 percent of simulations are below and 50% of the simulations are above the price of $207.357$.
+
+#Discussion
+##Summary
+The idea to simulate the DIS stock price is to generate thousands of random walk simulation to get a general characteristic of the DIS stock price. We first observed the historical trend and trading volumes for the past ten years and identified some pattern. By extending the past price information, we eliminate influence of price fluctuation using log return. After one simulation of future price of DIS for next 5 years using random walk theory, we replicated this process for 1000 times. From the result, we obtained the distribution of probability and range of how DIS stock price might exhibit in next 5 year.
+
+
+##Conclusion
+
+From this paper, we can conclude that it is possible to model the future price of a stock using random walk theory and Monte Carlo simulation. The outcome of our prediction might still far from to be used for real investor as we can see the high uncertainty from the probability distribution. However, the purpose of the paper is not to give any investment suggestion but to use the past information of DIS stock to create a broad vision for its future trend. As we see from the result, despite few of the curves were ridiculously different from others, there shows some characteristic of the past trend. It is still questionable if the Monte Carlo simulation of price prediction ca be used for business purpose. 
+
+##Weakness and Next Step
+As mentioned in the introduction, the stock market is a prime example of a complex stochastic system. [6] Although the Monte Carlo method of simulation consider the randomness of the stock market, there still exists other factor which prevent us from getting a more accurate result.  Basically, we can not expect a perfect model to predict the stock price. However, there are still some method that we can improve our model. One idea to improve the accuracy of the prediction is to see the price movement as a Geometric Brownian Motion.
+
+
+
+Another problem for the method is that there could be a more detailed explanation in the result section. It might be necessary to explain all the meaning behind the statistic glossary. My primary thought of this problem is that the people who would be interested by the content of this paper, have already possessed the basic knowledge of stock market and statistical knowledge. However, my assumption could be a mistake. 
+
+#Citation:
+
+[1] Smith, Tim. “Random Walk Theory.” Investopedia, Investopedia, 14 Dec. 2020, www.investopedia.com/terms/r/randomwalktheory.asp. 
+
+
+[2] Harjanto, Joy Gracia. “Analyzing Stocks Using R.” Medium, Towards Data Science, 23 Aug. 2018,towardsdatascience.com/analyzing-stocks-using-r-550be7f5f20d. 
+
+
+[3] Johnson, Rose. “Seven Ways to Analyze Stock.” Finance, 21 Nov. 2017, finance.zacks.com/seven-ways-analyze-stock-4845.html. 
+
+[4]DSEP, Berkeley. “Percentiles.” Redirecting..., Data 100 at UC Berkeley, 30 Sept. 2019, www.inferentialthinking.com/chapters/13/1/Percentiles.html. 
+
+
+[5] Kenton, Will. “Monte Carlo Simulation.” Investopedia, Investopedia, 16 Sept. 2020, www.investopedia.com/terms/m/montecarlosimulation.asp. 
+
+
+[6]Bernard Lapeyre Damien Lamberton. Introduction to Stochastic Calculus Applied to Finance, Second Edition. Chapman and Hall/CRC, 2007. 
+
+
+[7] Jamieson S. (Python For Finance). Monte Carlo Simulation in Python 
+– Simulating a Random Walk. url: http://www.pythonforfinance. 
+net/2016/11/28/monte-carlo-simulation-in-python/. 
+
+
+
